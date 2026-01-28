@@ -47,8 +47,8 @@ class HomeScreen extends StatelessWidget {
           double income = 0;
           double expense = 0;
           for (var t in transactions) {
-            if (t.type == 'income') income += t.amount;
-            else expense += t.amount;
+            if (t.type == 'income') {income += t.amount;}
+            else { expense += t.amount;}
           }
           double total = income - expense;
 
@@ -58,9 +58,7 @@ class HomeScreen extends StatelessWidget {
               children: [
                 _buildBalanceCard(total, income, expense),
                 const SizedBox(height: 20),
-                // Pie Chart can go here (omitted for brevity, keep your existing one if you have it)
-                
-                // 2. The Real Pie Chart
+
 Container(
   height: 220,
   width: double.infinity,
@@ -92,7 +90,6 @@ Container(
           );
         },
       ),
-      // FIXED: Square-ish Button
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.push(context, MaterialPageRoute(builder: (context) => const AddTransactionScreen()));
@@ -121,7 +118,6 @@ Container(
   Widget _buildTransactionItem(BuildContext context, TransactionModel transaction) {
     bool isIncome = transaction.type == 'income';
     return GestureDetector(
-      // FIXED: Long Press to Delete
       onLongPress: () {
   showDialog(
     context: context,

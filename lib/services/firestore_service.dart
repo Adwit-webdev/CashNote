@@ -60,4 +60,18 @@ Future<Map<String, dynamic>?> getProductKnowledge(String barcode) async {
       return null;
     }
   }
+  // --- BUDGET FEATURE ---
+  Future<void> setMonthlyBudget(double amount) async {
+    await _db.collection('settings').doc('budget').set({
+      'amount': amount, 
+      'updatedAt': FieldValue.serverTimestamp()
+    }, SetOptions(merge: true));
+  }
+
+  // Get the budget
+  Stream<double> getMonthlyBudget() {
+    return _db.collection('settings').doc('budget').snapshots().map(
+      (doc) => doc.exists ? (doc.data()?['amount'] ?? 0.0).toDouble() : 0.0
+    );
+  }
 }

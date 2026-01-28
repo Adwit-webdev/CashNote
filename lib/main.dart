@@ -31,12 +31,11 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: Colors.black, // True Black
-        // Modern Color Scheme
+        scaffoldBackgroundColor: Colors.black,
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFFD700), // Gold/Yellow
+          primary: Color(0xFFFFD700), 
           onPrimary: Colors.black,
-          surface: Color(0xFF1E1E1E), // Dark Grey for Cards
+          surface: Color(0xFF1E1E1E), 
           onSurface: Colors.white,
         ),
       ),

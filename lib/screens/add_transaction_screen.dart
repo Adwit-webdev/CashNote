@@ -16,7 +16,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
   String _selectedType = 'expense'; // 'expense' or 'income'
   String _selectedCategory = 'Food';
 
-  // 1. Define distinct lists for Expense vs Income
   final List<Map<String, dynamic>> expenseCategories = [
     {'name': 'Food', 'icon': Icons.lunch_dining},
     {'name': 'Shopping', 'icon': Icons.shopping_cart},
@@ -63,11 +62,10 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 2. Decide which list to show based on the tab
     final currentCategories = _selectedType == 'expense' ? expenseCategories : incomeCategories;
 
     return Scaffold(
-      backgroundColor: Colors.black, // Dark background for the top part
+      backgroundColor: Colors.black,
       appBar: AppBar(
         backgroundColor: Colors.black,
         leading: IconButton(
@@ -85,7 +83,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
       ),
       body: Column(
         children: [
-          // Amount Input Section
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
             child: Column(
@@ -103,7 +100,6 @@ class _AddTransactionScreenState extends State<AddTransactionScreen> {
                     hintStyle: TextStyle(color: Colors.white24),
                   ),
                 ),
-                // Note Input (Optional but useful)
                 TextField(
                   controller: _noteController,
                   style: const TextStyle(color: Colors.white70),

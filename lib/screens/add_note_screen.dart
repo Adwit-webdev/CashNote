@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
-import 'package:share_plus/share_plus.dart'; // REQUIRED
-import 'package:http/http.dart' as http;      // For Scanner
-import 'dart:convert';                        // For Scanner
+import 'package:share_plus/share_plus.dart';
+import 'package:http/http.dart' as http;     
+import 'dart:convert';                        
 import '../models/note_model.dart';
 import '../models/transaction_model.dart';
 import '../services/firestore_service.dart';
@@ -42,12 +42,9 @@ final Map<NoteItem, String> _scannedBarcodes = {};
     
     if (_titleController.text.isEmpty && _items.isEmpty) return;
 
-    // ✅ ADD THIS BLOCK: Learn new prices for scanned items
     for (var item in _items) {
-      // If this item came from a barcode scan
       if (_scannedBarcodes.containsKey(item)) {
         String barcode = _scannedBarcodes[item]!;
-        // Save the Name and Price you entered to the global library
         await FirestoreService().saveProductKnowledge(barcode, item.text, item.price);
       }
     }
@@ -62,7 +59,6 @@ final Map<NoteItem, String> _scannedBarcodes = {};
       colorIndex: _colorIndex,
     );
     
-    // ... (Rest of your existing _saveNote logic remains the same)
     if (widget.note == null) {
       await FirestoreService().addNote(newNote);
     } else {
@@ -78,8 +74,7 @@ final Map<NoteItem, String> _scannedBarcodes = {};
     }
     if (mounted) Navigator.pop(context);
   }
-
-  // --- 📤 SHARE FEATURE (FIXED) ---
+  // --- 📤 SHARE FEATURE ---
   void _shareNote() async {
     String text = "${_titleController.text}\n"; 
     if (_items.isNotEmpty) text += "------------------\n";
@@ -162,7 +157,6 @@ final Map<NoteItem, String> _scannedBarcodes = {};
         }
       }
     } catch (e) {
-      // ✅ FIXED: Switched to 'print' to avoid import errors
       print("Error fetching product: $e"); 
     }
     return null;
@@ -212,7 +206,7 @@ void _setReminder() async {
     scheduledTime: scheduledTime,
   );
 
-  print("Reminder Scheduled for: $scheduledTime"); // Check your 'Run' tab for this
+  print("Reminder Scheduled for: $scheduledTime");
 
   if (mounted) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -224,17 +218,22 @@ void _setReminder() async {
     );
   }
 }
-
-  // --- 🧠 SMART CHECK ---
+  // --- ✅ HANDLE ITEM BOUGHT FEATURE (UPDATED) ---
   void _handleItemBought(NoteItem item) async {
+    // Check if valid price exists and item is NOT already checked off
     if (item.price > 0 && !item.isDone) {
+      
+      // ✅ FIX: Multiply price by quantity
+      final double totalAmount = item.price * item.quantity;
+
       final newTransaction = TransactionModel(
         id: const Uuid().v4(),
-        amount: item.price,
+        amount: totalAmount, // Uses the calculated total
         category: 'Shopping', 
         type: 'expense',
         date: DateTime.now(),
-        note: "Bought: ${item.text}",
+        // ✅ Added quantity to the note for clarity
+        note: "Bought: ${item.quantity}x ${item.text}", 
       );
 
       await FirestoreService().addTransaction(newTransaction);
@@ -242,7 +241,7 @@ void _setReminder() async {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Added ₹${item.price.toStringAsFixed(0)} to Expenses! 💸"),
+            content: Text("Added ₹${totalAmount.toStringAsFixed(0)} to Expenses! 💸"),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 2),
           ),
@@ -258,7 +257,7 @@ void _setReminder() async {
   double get _totalCost {
     double total = 0;
     for (var item in _items) {
-      total += item.price;
+      total += (item.price * item.quantity);
     }
     return total;
   }
@@ -362,7 +361,6 @@ void _setReminder() async {
     );
   }
 }
-
 class NoteItemRow extends StatefulWidget {
   final NoteItem item;
   final VoidCallback onChanged;
@@ -391,6 +389,78 @@ class _NoteItemRowState extends State<NoteItemRow> {
     _textController = TextEditingController(text: widget.item.text);
     _priceController = TextEditingController(text: widget.item.price == 0 ? '' : widget.item.price.toStringAsFixed(0));
   }
+  void _editQuantity() {
+    TextEditingController qtyController = TextEditingController(text: widget.item.quantity.toString());
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.grey[900],
+        title: const Text("Set Quantity", style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Input Field
+            TextField(
+              controller: qtyController,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+              decoration: const InputDecoration(
+                prefixText: "x ",
+                prefixStyle: TextStyle(color: Color(0xFFFFD700), fontSize: 24),
+                enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFFD700))),
+                focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFFFD700), width: 2)),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Quick Buttons (-1, +1)
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.remove_circle_outline, color: Colors.white54),
+                  onPressed: () {
+                    int current = int.tryParse(qtyController.text) ?? 1;
+                    if (current > 1) {
+                      qtyController.text = (current - 1).toString();
+                    }
+                  },
+                ),
+                IconButton(
+                  icon: const Icon(Icons.add_circle_outline, color: Colors.white54),
+                  onPressed: () {
+                    int current = int.tryParse(qtyController.text) ?? 1;
+                    qtyController.text = (current + 1).toString();
+                  },
+                ),
+              ],
+            )
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), 
+            child: const Text("Cancel", style: TextStyle(color: Colors.white54))
+          ),
+          ElevatedButton(
+            onPressed: () {
+              int? val = int.tryParse(qtyController.text);
+              if (val != null && val > 0) {
+                setState(() {
+                  widget.item.quantity = val;
+                  widget.onChanged(); // Updates Total Cost
+                });
+              }
+              Navigator.pop(context);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFD700)),
+            child: const Text("Save", style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -398,6 +468,7 @@ class _NoteItemRowState extends State<NoteItemRow> {
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       child: Row(
         children: [
+          // 1. CHECKBOX
           GestureDetector(
             onTap: () {
               widget.onCheck(); 
@@ -412,23 +483,43 @@ class _NoteItemRowState extends State<NoteItemRow> {
             ),
           ),
           const SizedBox(width: 10),
+
+          // 2. ITEM NAME
           Expanded(
             child: TextField(
               controller: _textController,
-              onChanged: (val) {
-                widget.item.text = val;
-              },
+              onChanged: (val) => widget.item.text = val,
               style: TextStyle(
                 color: widget.item.isDone ? Colors.grey : Colors.white,
                 decoration: widget.item.isDone ? TextDecoration.lineThrough : null,
               ),
               decoration: const InputDecoration(
-                hintText: 'Item name',
+                hintText: 'Item',
                 hintStyle: TextStyle(color: Colors.white24),
                 border: InputBorder.none,
               ),
             ),
           ),
+
+          // 3. 🆕 MANUAL QUANTITY BUTTON (Opens Dialog)
+          GestureDetector(
+            onTap: _editQuantity, // Call the new dialog function
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              margin: const EdgeInsets.symmetric(horizontal: 5),
+              decoration: BoxDecoration(
+                color: Colors.grey[800],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Text(
+                "x${widget.item.quantity}",
+                style: const TextStyle(color: Color(0xFFFFD700), fontWeight: FontWeight.bold, fontSize: 12),
+              ),
+            ),
+          ),
+
+          // 4. PRICE INPUT
           SizedBox(
             width: 50,
             child: TextField(
@@ -438,7 +529,7 @@ class _NoteItemRowState extends State<NoteItemRow> {
                 widget.item.price = double.tryParse(val) ?? 0;
                 widget.onChanged();
               },
-              style: const TextStyle(color: Color(0xFFFFD700), fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               decoration: const InputDecoration(
                 hintText: '₹',
                 hintStyle: TextStyle(color: Colors.grey),
@@ -447,6 +538,8 @@ class _NoteItemRowState extends State<NoteItemRow> {
               textAlign: TextAlign.right,
             ),
           ),
+
+          // 5. DELETE BUTTON
           IconButton(
             icon: const Icon(Icons.close, color: Colors.white24, size: 20),
             onPressed: widget.onDelete,

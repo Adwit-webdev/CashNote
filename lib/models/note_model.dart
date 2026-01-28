@@ -4,7 +4,7 @@ class NoteItem {
   String text;
   double price;
   bool isDone;
-  int quantity; // 👈 NEW: Quantity Feature
+  int quantity;
 
   NoteItem({
     required this.text, 
