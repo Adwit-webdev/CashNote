@@ -47,7 +47,7 @@ class NoteModel {
     required this.colorIndex,
   });
 
-  // 🧠 Smart Total Calculation: Price * Quantity
+  //Total Calculation: Price * Quantity
   double get totalCost {
     double total = 0;
     for (var item in items) {

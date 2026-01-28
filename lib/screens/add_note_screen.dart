@@ -21,6 +21,8 @@ class AddNoteScreen extends StatefulWidget {
 class _AddNoteScreenState extends State<AddNoteScreen> {
   final TextEditingController _titleController = TextEditingController();
   List<NoteItem> _items = [];
+  
+final Map<NoteItem, String> _scannedBarcodes = {}; 
   int _colorIndex = 0;
 
   @override
@@ -40,6 +42,16 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
     
     if (_titleController.text.isEmpty && _items.isEmpty) return;
 
+    // ✅ ADD THIS BLOCK: Learn new prices for scanned items
+    for (var item in _items) {
+      // If this item came from a barcode scan
+      if (_scannedBarcodes.containsKey(item)) {
+        String barcode = _scannedBarcodes[item]!;
+        // Save the Name and Price you entered to the global library
+        await FirestoreService().saveProductKnowledge(barcode, item.text, item.price);
+      }
+    }
+
     final String id = widget.note?.id ?? const Uuid().v4();
 
     final newNote = NoteModel(
@@ -49,7 +61,8 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
       items: _items,
       colorIndex: _colorIndex,
     );
-
+    
+    // ... (Rest of your existing _saveNote logic remains the same)
     if (widget.note == null) {
       await FirestoreService().addNote(newNote);
     } else {
@@ -91,30 +104,50 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
     );
   }
 
-  // --- 🕵️‍♂️ SCANNER FEATURE (FIXED) ---
+  // --- 🕵️‍♂️ SCANNER FEATURE (UPDATED) ---
   void _scanBarcode() async {
     final result = await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => const BarcodeScannerScreen()),
     );
 
-    if (!mounted) return;
+    if (!mounted || result == null || result is! String) return;
 
-    if (result != null && result is String) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Searching for product... 🔍")),
-      );
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Searching product info... 🔍")),
+    );
 
-      String? name = await _fetchProductName(result);
+    // 1. Check if we have "Learned" this product before
+    Map<String, dynamic>? learnedData = await FirestoreService().getProductKnowledge(result);
+    
+    String name;
+    double price;
+
+    if (learnedData != null) {
+      // ✅ FOUND: Use remembered name and price
+      name = learnedData['name'];
+      price = (learnedData['price'] as num).toDouble();
       
-      if (mounted) {
-        setState(() {
-          _items.add(NoteItem(
-            text: name ?? "Unknown Product ($result)", 
-            price: 0 
-          ));
-        });
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Price found! ₹$price")),
+      );
+    } else {
+      // ❌ NEW: Fetch from API or default
+      name = await _fetchProductName(result) ?? "Unknown Product";
+      price = 0.0;
+    }
+
+    if (mounted) {
+      setState(() {
+        // Create the item
+        final newItem = NoteItem(text: name, price: price);
+        
+        // Add to list
+        _items.add(newItem);
+        
+        // Map this item to the barcode so we can update it later
+        _scannedBarcodes[newItem] = result;
+      });
     }
   }
 
@@ -136,47 +169,61 @@ class _AddNoteScreenState extends State<AddNoteScreen> {
   }
 
   // --- ⏰ REMINDER FEATURE ---
-  void _setReminder() async {
-    final DateTime? pickedDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2100),
-    );
-    if (pickedDate == null) return;
+  // Inside add_note_screen.dart
 
-    if (!mounted) return;
-    final TimeOfDay? pickedTime = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
-    if (pickedTime == null) return;
+void _setReminder() async {
+  final DateTime? pickedDate = await showDatePicker(
+    context: context,
+    initialDate: DateTime.now(),
+    firstDate: DateTime.now(),
+    lastDate: DateTime(2100),
+  );
+  if (pickedDate == null) return;
 
-    final DateTime scheduledTime = DateTime(
-      pickedDate.year,
-      pickedDate.month,
-      pickedDate.day,
-      pickedTime.hour,
-      pickedTime.minute,
-    );
+  if (!mounted) return;
+  final TimeOfDay? pickedTime = await showTimePicker(
+    context: context,
+    initialTime: TimeOfDay.now(),
+  );
+  if (pickedTime == null) return;
 
-    await NotificationService.scheduleNotification(
-      id: DateTime.now().millisecondsSinceEpoch % 100000, 
-      title: "Reminder: ${_titleController.text}",
-      body: "Don't forget your shopping list! 🛒",
-      scheduledTime: scheduledTime,
+  // Combine Date and Time
+  final DateTime scheduledTime = DateTime(
+    pickedDate.year,
+    pickedDate.month,
+    pickedDate.day,
+    pickedTime.hour,
+    pickedTime.minute,
+  );
+  
+  // DEBUG: Check if time is in the past
+  if (scheduledTime.isBefore(DateTime.now())) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Cannot set reminder in the past! ⚠️")),
     );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text("Reminder set for ${pickedTime.format(context)}! ⏰"),
-          backgroundColor: const Color(0xFFFFD700),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    }
+    return;
   }
+
+  // Schedule it
+  await NotificationService.scheduleNotification(
+    id: DateTime.now().millisecondsSinceEpoch % 100000, 
+    title: "Reminder: ${_titleController.text}",
+    body: "Don't forget your shopping list! 🛒",
+    scheduledTime: scheduledTime,
+  );
+
+  print("Reminder Scheduled for: $scheduledTime"); // Check your 'Run' tab for this
+
+  if (mounted) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text("Reminder set for ${pickedTime.format(context)}! ⏰"),
+        backgroundColor: const Color(0xFFFFD700),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+  }
+}
 
   // --- 🧠 SMART CHECK ---
   void _handleItemBought(NoteItem item) async {

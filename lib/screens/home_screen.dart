@@ -6,6 +6,7 @@ import 'add_transaction_screen.dart';
 import 'calendar_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/expense_pie_chart.dart';
+import '../services/emoji_service.dart';
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -122,25 +123,26 @@ Container(
     return GestureDetector(
       // FIXED: Long Press to Delete
       onLongPress: () {
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            backgroundColor: Colors.grey[900],
-            title: const Text("Delete Transaction?", style: TextStyle(color: Colors.white)),
-            content: Text("Are you sure you want to delete '${transaction.category}'?", style: const TextStyle(color: Colors.white70)),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-              TextButton(
-                onPressed: () {
-                  FirestoreService().deleteTransaction(transaction.id); // You need to add this method to Service!
-                  Navigator.pop(context);
-                },
-                child: const Text("Delete", style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          ),
-        );
-      },
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: Colors.grey[900],
+      title: const Text("Delete?", style: TextStyle(color: Colors.white)),
+      // LATEST: Using string interpolation with the service
+      content: Text("Delete '${transaction.note.isEmpty ? transaction.category : EmojiService.addEmoji(transaction.note)}'?"),
+      actions: [ // <-- This label was likely missing
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text("No")),
+        TextButton(
+          onPressed: () {
+            FirestoreService().deleteTransaction(transaction.id);
+            Navigator.pop(context);
+          },
+          child: const Text("Delete", style: TextStyle(color: Colors.red)),
+        ),
+      ],
+    ),
+  );
+},
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(15),

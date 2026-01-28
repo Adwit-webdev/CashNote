@@ -25,6 +25,10 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'CashNote',
       theme: ThemeData(
+        searchBarTheme: SearchBarThemeData(
+        textStyle: WidgetStateProperty.all(const TextStyle(color: Colors.white)),
+        hintStyle: WidgetStateProperty.all(const TextStyle(color: Colors.grey)),
+        ),
         useMaterial3: true,
         brightness: Brightness.dark,
         scaffoldBackgroundColor: Colors.black, // True Black

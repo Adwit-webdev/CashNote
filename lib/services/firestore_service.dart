@@ -36,4 +36,28 @@ class FirestoreService {
   Future<void> deleteTransaction(String id) async {
     await _db.collection('transactions').doc(id).delete();
   }
+  // lib/services/firestore_service.dart
+
+// 1. Learn/Update the price for a barcode
+Future<void> saveProductKnowledge(String barcode, String name, double price) async {
+    try {
+      await _db.collection('products').doc(barcode).set({
+        'name': name,
+        'price': price,
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true)); // Merge ensures we don't delete other fields if we add them later
+    } catch (e) {
+      print("Error saving product knowledge: $e");
+    }
+  }
+// 2. Fetch the remembered price for a barcode
+Future<Map<String, dynamic>?> getProductKnowledge(String barcode) async {
+    try {
+      final doc = await _db.collection('products').doc(barcode).get();
+      return doc.exists ? doc.data() : null;
+    } catch (e) {
+      print("Error getting product knowledge: $e");
+      return null;
+    }
+  }
 }
