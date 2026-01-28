@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "774659079181",
+    "project_id": "project-3954038220376677871",
+    "storage_bucket": "project-3954038220376677871.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:774659079181:android:483e87437f386193c5e944",
+        "android_client_info": {
+          "package_name": "com.example.cash_note"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBMgA7UB-8jr3c7jmWwn5VSqWDKCUb7zcU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
