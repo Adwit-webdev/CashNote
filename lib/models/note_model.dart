@@ -5,12 +5,16 @@ class NoteItem {
   double price;
   bool isDone;
   int quantity;
+  String priority; 
+  String category; 
 
   NoteItem({
     required this.text, 
     this.price = 0, 
     this.isDone = false,
-    this.quantity = 1, // Default is 1
+    this.quantity = 1,
+    this.priority = 'Medium', // Default
+    this.category = 'Other',  // Default
   });
 
   Map<String, dynamic> toMap() {
@@ -19,6 +23,8 @@ class NoteItem {
       'price': price,
       'isDone': isDone,
       'quantity': quantity,
+      'priority': priority,
+      'category': category,
     };
   }
 
@@ -28,6 +34,8 @@ class NoteItem {
       price: (map['price'] ?? 0).toDouble(),
       isDone: map['isDone'] ?? false,
       quantity: map['quantity'] ?? 1,
+      priority: map['priority'] ?? 'Medium',
+      category: map['category'] ?? 'Other',
     );
   }
 }

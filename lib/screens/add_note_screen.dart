@@ -36,7 +36,22 @@ final Map<NoteItem, String> _scannedBarcodes = {};
       _items.add(NoteItem(text: '')); 
     }
   }
-
+  // Add this inside _AddNoteScreenState
+  void _sortItems() {
+    setState(() {
+      _items.sort((a, b) {
+        // 1. Done items go to bottom
+        if (a.isDone && !b.isDone) return 1;
+        if (!a.isDone && b.isDone) return -1;
+        
+        // 2. High Priority goes to top
+        const priorityMap = {'High': 0, 'Medium': 1, 'Low': 2};
+        int pA = priorityMap[a.priority] ?? 1;
+        int pB = priorityMap[b.priority] ?? 1;
+        return pA.compareTo(pB);
+      });
+    });
+  }
   void _saveNote() async {
     _items.removeWhere((item) => item.text.isEmpty && item.price == 0);
     
@@ -251,6 +266,7 @@ void _setReminder() async {
   }
 
   void _updateTotal() {
+    _sortItems();
     setState(() {});
   }
 
@@ -462,48 +478,129 @@ class _NoteItemRowState extends State<NoteItemRow> {
     );
   }
 
+  // 🔴 PRIORITY PICKER
+  void _changePriority() {
+    // Cycle: Medium -> High -> Low -> Medium
+    setState(() {
+      if (widget.item.priority == 'Medium') widget.item.priority = 'High';
+      else if (widget.item.priority == 'High') widget.item.priority = 'Low';
+      else widget.item.priority = 'Medium';
+      widget.onChanged(); // Trigger sort
+    });
+  }
+
+  // 🏷️ CATEGORY PICKER
+  void _changeCategory() {
+    final categories = ['Shopping', 'Work', 'Personal', 'Other'];
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.grey[900],
+      builder: (context) => ListView(
+        shrinkWrap: true,
+        children: categories.map((cat) => ListTile(
+          leading: Icon(_getCategoryIcon(cat), color: Colors.white),
+          title: Text(cat, style: const TextStyle(color: Colors.white)),
+          onTap: () {
+            setState(() => widget.item.category = cat);
+            Navigator.pop(context);
+          },
+        )).toList(),
+      ),
+    );
+  }
+
+  IconData _getCategoryIcon(String cat) {
+    switch (cat) {
+      case 'Shopping': return Icons.shopping_cart;
+      case 'Work': return Icons.work;
+      case 'Personal': return Icons.person;
+      default: return Icons.label;
+    }
+  }
+
+  Color _getPriorityColor() {
+    switch (widget.item.priority) {
+      case 'High': return Colors.redAccent;
+      case 'Low': return Colors.blueAccent;
+      default: return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      child: Row(
-        children: [
-          // 1. CHECKBOX
-          GestureDetector(
-            onTap: () {
-              widget.onCheck(); 
-              setState(() {
-                widget.item.isDone = !widget.item.isDone;
-              });
-              widget.onChanged();
-            },
-            child: Icon(
-              widget.item.isDone ? Icons.check_box : Icons.check_box_outline_blank,
-              color: widget.item.isDone ? const Color(0xFFFFD700) : Colors.grey,
-            ),
-          ),
-          const SizedBox(width: 10),
-
-          // 2. ITEM NAME
-          Expanded(
-            child: TextField(
-              controller: _textController,
-              onChanged: (val) => widget.item.text = val,
-              style: TextStyle(
-                color: widget.item.isDone ? Colors.grey : Colors.white,
-                decoration: widget.item.isDone ? TextDecoration.lineThrough : null,
+      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 4),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          borderRadius: BorderRadius.circular(8),
+          border: Border(left: BorderSide(color: _getPriorityColor(), width: 4)),
+        ),
+        child: Row(
+          children: [
+            // 1. CHECKBOX
+            IconButton(
+              icon: Icon(
+                widget.item.isDone ? Icons.check_circle : Icons.circle_outlined,
+                color: widget.item.isDone ? Colors.green : Colors.grey,
               ),
-              decoration: const InputDecoration(
-                hintText: 'Item',
-                hintStyle: TextStyle(color: Colors.white24),
-                border: InputBorder.none,
+              onPressed: () {
+                widget.onCheck();
+                setState(() => widget.item.isDone = !widget.item.isDone);
+                widget.onChanged();
+              },
+            ),
+
+            // 2. TEXT & CATEGORY
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: _textController,
+                    onChanged: (val) => widget.item.text = val,
+                    style: TextStyle(
+                      color: widget.item.isDone ? Colors.grey : Colors.white,
+                      decoration: widget.item.isDone ? TextDecoration.lineThrough : null,
+                    ),
+                    decoration: const InputDecoration(
+                      hintText: 'Task Name',
+                      hintStyle: TextStyle(color: Colors.white24),
+                      border: InputBorder.none,
+                      isDense: true,
+                    ),
+                  ),
+                  // Small metadata row
+                  Row(
+                    children: [
+                      GestureDetector(
+                        onTap: _changeCategory,
+                        child: Row(
+                          children: [
+                            Icon(_getCategoryIcon(widget.item.category), size: 12, color: Colors.grey),
+                            const SizedBox(width: 4),
+                            Text(widget.item.category, style: const TextStyle(color: Colors.grey, fontSize: 10)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      GestureDetector(
+                        onTap: _changePriority,
+                        child: Text(
+                          "${widget.item.priority} Priority", 
+                          style: TextStyle(color: _getPriorityColor(), fontSize: 10, fontWeight: FontWeight.bold)
+                        ),
+                      ),
+                    ],
+                  )
+                ],
               ),
             ),
-          ),
 
-          // 3. 🆕 MANUAL QUANTITY BUTTON (Opens Dialog)
-          GestureDetector(
-            onTap: _editQuantity, // Call the new dialog function
+            // 3. QUANTITY 
+            GestureDetector(
+            onTap: _editQuantity,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               margin: const EdgeInsets.symmetric(horizontal: 5),
@@ -518,10 +615,11 @@ class _NoteItemRowState extends State<NoteItemRow> {
               ),
             ),
           ),
+            const SizedBox(width: 8),
 
-          // 4. PRICE INPUT
-          SizedBox(
-            width: 50,
+            // 4. PRICE
+             SizedBox(
+            width: 60,
             child: TextField(
               controller: _priceController,
               keyboardType: TextInputType.number,
@@ -539,12 +637,13 @@ class _NoteItemRowState extends State<NoteItemRow> {
             ),
           ),
 
-          // 5. DELETE BUTTON
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white24, size: 20),
-            onPressed: widget.onDelete,
-          ),
-        ],
+            // 5. DELETE
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white24, size: 18),
+              onPressed: widget.onDelete,
+            ),
+          ],
+        ),
       ),
     );
   }
